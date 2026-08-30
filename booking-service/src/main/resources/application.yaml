@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: booking-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ticketrush
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
