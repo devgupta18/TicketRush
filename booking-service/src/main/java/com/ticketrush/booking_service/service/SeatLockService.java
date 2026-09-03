@@ -18,7 +18,12 @@ public class SeatLockService {
     }
 
     private String buildLockKey(Long showId, Long seatNumber) {
-        return "lock:show:" + showId + ":seat" + seatNumber;
+        return "lock:show:" + showId + ":seat:" + seatNumber;
+    }
+
+    public boolean isSeatLocked(Long showId, Long seatNumber) {
+        Boolean result = stringRedisTemplate.hasKey(buildLockKey(showId, seatNumber));
+        return result != null && result;
     }
 
     public boolean acquireLock(Long showId, Long seatNumber, Long userId) {
