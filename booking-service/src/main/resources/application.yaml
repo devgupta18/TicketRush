@@ -13,9 +13,11 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-  booking:
-    seat-lock:
-      ttl-seconds: 300
-  jwt:
-    secret: ${JWT_SECRET}
-    expiration: 3600000  # 1 hour, in milliseconds
+
+booking:
+  seat-lock:
+    ttl-seconds: 300
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 3600000  # 1 hour, in milliseconds
