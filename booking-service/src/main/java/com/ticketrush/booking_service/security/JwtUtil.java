@@ -2,9 +2,11 @@ package com.ticketrush.booking_service.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -44,4 +46,24 @@ public class JwtUtil {
 
         return Long.parseLong(claim.getSubject());
     }
+//
+//    private Claims getPayload(String token) {
+//        return Jwts.parser()
+//                .verifyWith(getSecretKey())
+//                .build()
+//                .parseSignedClaims(token)
+//                .getPayload();
+//    }
+//
+//    public boolean isTokenValid(String token, UserDetails userDetails) {
+//        boolean nameSame = getUserId(token) == ;
+//        Date expirationTime = getPayload(token)
+//                .getExpiration();
+//        return nameSame && expirationTime.after(new Date());
+//    }
+//
+//    public SecretKey getSecretKey() {
+//        byte[] keyBytes = Decoders.BASE64.decode(baseString);
+//        return Keys.hmacShaKeyFor(keyBytes);
+//    }
 }
