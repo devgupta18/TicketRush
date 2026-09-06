@@ -9,6 +9,8 @@ import com.ticketrush.booking_service.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 public class AuthService {
     private final UserRepository userRepository;
@@ -29,6 +31,7 @@ public class AuthService {
         user.setEmail(email);
         user.setName(name);
         user.setPasswordHash(passwordEncoder.encode(password));
+        user.setCreatedAt(LocalDateTime.now());
         User createdUser = userRepository.save(user);
 
         String token = jwtUtil.generateToken(createdUser.getUserId());
