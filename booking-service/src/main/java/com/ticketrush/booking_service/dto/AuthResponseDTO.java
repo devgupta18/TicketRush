@@ -1,4 +1,3 @@
 package com.ticketrush.booking_service.dto;
 
-public class AuthResponseDTO {
-}
+public record AuthResponseDTO(String token) {}
