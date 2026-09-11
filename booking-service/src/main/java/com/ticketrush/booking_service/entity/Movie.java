@@ -27,6 +27,4 @@ public class Movie {
     private LocalDate releaseDate;
     @Enumerated(EnumType.STRING)
     private MovieGenre genre;
-    @Column(nullable = false)
-    private Long price;
 }
