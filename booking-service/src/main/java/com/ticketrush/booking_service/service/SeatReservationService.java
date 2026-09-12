@@ -10,6 +10,7 @@ import java.util.List;
 @Slf4j
 public class SeatReservationService {
     private final SeatLockService seatLockService;
+    private static final long PAYMENT_INITIATION_THRESHOLD_SECONDS = 30;
 
     public SeatReservationService(SeatLockService seatLockService) {
         this.seatLockService = seatLockService;
@@ -48,6 +49,16 @@ public class SeatReservationService {
         }
 
         return new SeatLockResult(!failureEncountered, unavailableSeats);
+    }
+
+    public boolean canInitiatePayment(Long showId, List<Long> seatNumber) {
+        for(Long seat: seatNumber) {
+            long ttlRemaining = seatLockService.getRemainingTtl(showId, seat);
+            if(ttlRemaining <= PAYMENT_INITIATION_THRESHOLD_SECONDS) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
