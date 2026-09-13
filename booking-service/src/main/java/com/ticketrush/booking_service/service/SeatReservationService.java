@@ -1,5 +1,8 @@
 package com.ticketrush.booking_service.service;
 
+import com.ticketrush.booking_service.dto.BookingResponseDTO;
+import com.ticketrush.booking_service.entity.Booking;
+import com.ticketrush.booking_service.exception.SeatLockOwnershipException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -10,10 +13,12 @@ import java.util.List;
 @Slf4j
 public class SeatReservationService {
     private final SeatLockService seatLockService;
+    private final BookingFinalizationService bookingFinalizationService;
     private static final long PAYMENT_INITIATION_THRESHOLD_SECONDS = 30;
 
-    public SeatReservationService(SeatLockService seatLockService) {
+    public SeatReservationService(SeatLockService seatLockService, BookingFinalizationService bookingFinalizationService) {
         this.seatLockService = seatLockService;
+        this.bookingFinalizationService = bookingFinalizationService;
     }
 
     public record SeatLockResult(boolean success, List<Long> unavailableSeats) {}
@@ -59,6 +64,27 @@ public class SeatReservationService {
             }
         }
         return true;
+    }
+
+    public BookingResponseDTO confirmPayment(Long showId, List<Long> seatNumber, Long userId) {
+        for(Long seat: seatNumber) {
+            if(!seatLockService.isLockedByUser(showId, seat, userId)) {
+                throw new SeatLockOwnershipException("Seat is currently unavailable");
+            }
+        }
+
+        BookingResponseDTO bookingResponseDTO = bookingFinalizationService.finalizeBooking(showId,  seatNumber, userId);
+
+        for(Long seat: seatNumber) {
+            boolean isLockReleased = seatLockService.releaseLock(showId, seat, userId);
+            if(!isLockReleased) {
+                log.warn("Failed to release lock for seat {} on show {}", seat, showId);
+            }
+        }
+
+        // Booking Confirmation Event
+
+        return bookingResponseDTO;
     }
 }
 

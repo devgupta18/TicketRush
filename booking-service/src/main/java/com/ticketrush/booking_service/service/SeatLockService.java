@@ -36,9 +36,8 @@ public class SeatLockService {
 
     public boolean releaseLock(Long showId, Long seatNumber, Long userId) {
         String key = buildLockKey(showId, seatNumber);
-        String value = stringRedisTemplate.opsForValue().get(key);
 
-        if(value != null &&  value.equals(userId.toString())) {
+        if(isLockedByUser(showId,seatNumber,userId)) {
             stringRedisTemplate.delete(key);
             return true;
         }
@@ -53,5 +52,15 @@ public class SeatLockService {
         }
 
         return ttlExpiryTime;
+    }
+
+    public boolean isLockedByUser(Long showId, Long seatNumber, Long userId) {
+        String key = buildLockKey(showId, seatNumber);
+        String value = stringRedisTemplate.opsForValue().get(key);
+
+        if(value != null && value.equals(userId.toString())) {
+            return true;
+        }
+        return false;
     }
 }
