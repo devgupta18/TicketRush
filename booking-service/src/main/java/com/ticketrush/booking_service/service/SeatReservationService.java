@@ -2,7 +2,11 @@ package com.ticketrush.booking_service.service;
 
 import com.ticketrush.booking_service.dto.BookingResponseDTO;
 import com.ticketrush.booking_service.entity.Booking;
+import com.ticketrush.booking_service.entity.Seat;
+import com.ticketrush.booking_service.entity.SeatStatus;
 import com.ticketrush.booking_service.exception.SeatLockOwnershipException;
+import com.ticketrush.booking_service.exception.SeatNotFoundException;
+import com.ticketrush.booking_service.repository.SeatRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -14,11 +18,13 @@ import java.util.List;
 public class SeatReservationService {
     private final SeatLockService seatLockService;
     private final BookingFinalizationService bookingFinalizationService;
+    private final SeatRepository seatRepository;
     private static final long PAYMENT_INITIATION_THRESHOLD_SECONDS = 30;
 
-    public SeatReservationService(SeatLockService seatLockService, BookingFinalizationService bookingFinalizationService) {
+    public SeatReservationService(SeatLockService seatLockService, BookingFinalizationService bookingFinalizationService, SeatRepository seatRepository) {
         this.seatLockService = seatLockService;
         this.bookingFinalizationService = bookingFinalizationService;
+        this.seatRepository = seatRepository;
     }
 
     public record SeatLockResult(boolean success, List<Long> unavailableSeats) {}
@@ -28,32 +34,49 @@ public class SeatReservationService {
         List<Long> lockedSeats = new ArrayList<>();
         boolean failureEncountered = false;
 
-        for(Long seat: seatNumber) {
-            if(!failureEncountered) {
-                boolean attempt = seatLockService.acquireLock(showId, seat, userId);
-                if(attempt) {
-                    lockedSeats.add(seat);
-                } else  {
+        try {
+            for(Long seat: seatNumber) {
+                Seat s = seatRepository.findByShow_ShowIdAndSeatNumber(showId, seat).orElseThrow(() -> new SeatNotFoundException("Seat not found"));
+                boolean isSeatAvailable = s.getStatus().equals(SeatStatus.AVAILABLE);
+                if(isSeatAvailable) {
+                    if(!failureEncountered) {
+                        boolean attempt = seatLockService.acquireLock(showId, seat, userId);
+                        if(attempt) {
+                            lockedSeats.add(seat);
+                        } else  {
+                            unavailableSeats.add(seat);
+                            failureEncountered = true;
+                        }
+                    } else {
+                        if(seatLockService.isSeatLocked(showId, seat)) {
+                            unavailableSeats.add(seat);
+                        }
+                    }
+                } else {
                     unavailableSeats.add(seat);
                     failureEncountered = true;
                 }
-            } else {
-                if(seatLockService.isSeatLocked(showId, seat)) {
-                    unavailableSeats.add(seat);
-                }
             }
+        } catch (RuntimeException e) {
+            releaseAll(showId, userId, lockedSeats);
+
+            throw e;
         }
 
         if(failureEncountered) {
-            for(Long seat:lockedSeats) {
-                boolean lockReleased = seatLockService.releaseLock(showId, seat, userId);
-                if(!lockReleased) {
-                    log.warn("Failed to release lock for seat {} on show {}", seat, showId);
-                }
-            }
+            releaseAll(showId, userId, lockedSeats);
         }
 
         return new SeatLockResult(!failureEncountered, unavailableSeats);
+    }
+
+    private void releaseAll(Long showId, Long userId, List<Long> lockedSeats) {
+        for(Long seat : lockedSeats) {
+            boolean lockReleased = seatLockService.releaseLock(showId, seat, userId);
+            if(!lockReleased) {
+                log.warn("Failed to release lock for seat {} on show {}", seat, showId);
+            }
+        }
     }
 
     public boolean canInitiatePayment(Long showId, List<Long> seatNumber) {
@@ -75,12 +98,7 @@ public class SeatReservationService {
 
         BookingResponseDTO bookingResponseDTO = bookingFinalizationService.finalizeBooking(showId,  seatNumber, userId);
 
-        for(Long seat: seatNumber) {
-            boolean isLockReleased = seatLockService.releaseLock(showId, seat, userId);
-            if(!isLockReleased) {
-                log.warn("Failed to release lock for seat {} on show {}", seat, showId);
-            }
-        }
+        releaseAll(showId, userId, seatNumber);
 
         // Booking Confirmation Event
 
