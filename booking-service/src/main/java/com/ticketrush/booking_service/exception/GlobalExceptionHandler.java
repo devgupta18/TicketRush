@@ -10,7 +10,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApplicationException.class)
     public ResponseEntity<ErrorResponse> handleApplicationException(ApplicationException ex) {
         ErrorResponse error = new ErrorResponse(ex.getStatus().value(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        return ResponseEntity.status(ex.getStatus()).body(error);
     }
-
 }

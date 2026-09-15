@@ -5,6 +5,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -62,5 +64,17 @@ public class SeatLockService {
             return true;
         }
         return false;
+    }
+
+    public List<Boolean> areLocked(Long showId, List<Long> seatNumbers) {
+        List<String> lockKeys = seatNumbers.stream()
+                .map(seatNumber -> buildLockKey(showId, seatNumber))
+                .toList();
+
+        return stringRedisTemplate.opsForValue().multiGet(lockKeys).stream()
+                .map(Objects::nonNull)
+                .toList();
+
+
     }
 }
